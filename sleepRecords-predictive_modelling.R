@@ -34,13 +34,15 @@ names(sleepRecords)[names(sleepRecords)=="sl"] <- "stress_level"
 names(sleepRecords)
 summary(sleepRecords)
 
+str(sleepRecords)
 
-unique(sleepRecords$stress_level)
 
+
+#pairplot
 
 install.packages("psych")
 library(psych)
-#pairplot
+
 pairs(sleepRecords)
 # Initial investigation of data variable
 pairs.panels(sleepRecords,
@@ -59,7 +61,8 @@ pairs.panels(sleepRecords,
              ci = TRUE)          # If TRUE, adds confidence intervals
 
 
-#we will implement a correlation plot to check the correlation betweeen variables
+#correlation plot to check the correlation betweeen variables
+
 correlation_tab <- cor(sleepRecords)
 install.packages("corrplot")
 library(corrplot)
@@ -68,6 +71,10 @@ col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA")
 corrplot(correlation_tab, method = "color", shade.col = NA, tl.col = "black", tl.srt = 45,tl.cex =1,cl.cex=1,col = col(200), addCoef.col = "black", order = "AOE",number.cex = .5)
 
 #* Normality check for all variables using qq plot
+
+attach(sleepRecords)
+opar <- par(no.readonly = TRUE)
+par(mar = c(3, 3, 2, 1)) 
 
 qqnorm(sleepRecords$snoring_rate, main="QQ plot for  Snoring Rate", ylab = "Snoring Rate")
 qqline(sleepRecords$snoring_rate)
@@ -189,12 +196,12 @@ shapiro.test(sleepRecords$stress_level) # p-value < 2.2e-16 , not normally distr
 #PART 3 - OUTLIER DETETCTION AND SOLUTION
 #There are multiple ways to detect outliers within a dataset. 
 #scatter plots and bar plots are quite commonly used
-#we will be trying to use the boxplot analysis to detect outliers.
+#trying to use the boxplot analysis to detect outliers.
 
 
+attach(sleepRecords)
 opar <- par(no.readonly = TRUE)
-
-par(mar = c(3, 3, 2, 1))  # Adjust the margin values as needed
+par(mar = c(3,3,2,1))  # Adjust the margin values as needed
 boxplot(sleepRecords$snoring_rate,
         main = "snoring_rate",
         sub = paste("Outlier rows: ", boxplot.stats(sleepRecords$snoring_rate)$out)
@@ -421,10 +428,7 @@ shapiro.test(transformed_rapid_eye_movement)
 
 
 
-#* Model building
-
-
-
+#*===========Model building====================
 
 #import caTools library
 install.packages("caTools")
@@ -436,12 +440,11 @@ split = sample.split(sleepRecords$blood_oxygen, SplitRatio = 0.80)
 train_set = subset(sleepRecords, split == TRUE)
 test_set = subset(sleepRecords, split == FALSE)
 #Model ran with all variables
-#implementing logistic regression
 model1 <- lm( blood_oxygen~ snoring_rate + heart_rate + body_temperature + limb_movement + respiration_rate  + rapid_eye_movement + 
                 sleeping_hours, data=train_set)
 summary(model1)
 
-
+#Model ran with selected variables
 model2 <- lm( blood_oxygen~   heart_rate + body_temperature +  rapid_eye_movement + 
                 sleeping_hours, data=train_set)
 summary(model2)
@@ -492,10 +495,7 @@ lines(density(studentized_fit)$x,
       lty = 2
 )
 
-
-
 outlierTest(model2)
-
 
 # Influential observations
 # Cook's D value > 4/(n-k-1)
@@ -505,8 +505,6 @@ outlierTest(model2)
 cutoff <- 4 / (nrow(train_set) - length(model2$coefficients) - 1)
 plot(model2, which = 4 , cook.levels = cutoff)
 abline(h = cutoff , lty = 2, col = "red")
-
-
 
 influencePlot(model2, 
               main = "Influence plot for model2",
@@ -526,14 +524,8 @@ ncvTest(model2)
 spreadLevelPlot(model2)
 
 
-# global validation of the model
 
-install.packages("gvlma")
-library(gvlma)
-gvmodel <- gvlma(model2)
-summary(gvmodel)
-
-# prdition with the test data
+#============DATA VALIDATION==================#
 
 predicted_model <- predict(model2, test_set)
 
@@ -545,5 +537,37 @@ head(actual_prediction)
 cor_accuracy <- cor(actual_prediction)
 cor_accuracy
 
+#====MODEL FORECASTING==============
+
+forecast <- data.frame(heart_rate = c(49,55,68,75,88)
+                       ,body_temperature = c(93.256,93.250,92.452,91.630,90.856)
+                       ,rapid_eye_movement = c(60.00,74.88,85.55,100.36,105.36)
+                       ,sleeping_hours = c(8,7.5,5.5,2.6,0)
+)
+
+forecasted_blood_oxygen <- predict(model2,question)
+forecasted_blood_oxygen
+
+forecast$forecasted_blood_oxygen <- forecasted_blood_oxygen
+
+forecast_cor <- cor(forecast)
+forecasted_blood_oxygen
+
+cor(sleepRecords$blood_oxygen,sleepRecords$heart_rate)
+cor(forecast$forecasted_blood_oxygen,forecast$heart_rate)
 
 
+cor(sleepRecords$blood_oxygen,sleepRecords$body_temperature)
+cor(forecast$forecasted_blood_oxygen,forecast$body_temperature)
+
+
+
+cor(sleepRecords$blood_oxygen,sleepRecords$rapid_eye_movement)
+cor(forecast$forecasted_blood_oxygen,forecast$rapid_eye_movement)
+
+
+
+cor(sleepRecords$blood_oxygen,sleepRecords$sleeping_hours)
+cor(forecast$forecasted_blood_oxygen,forecast$sleeping_hours)
+
+#=========================================================================#
